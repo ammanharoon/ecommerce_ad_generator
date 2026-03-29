@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ad-generator-stable
+  labels:
+    app: ad-generator
+    version: stable
+    track: stable
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ad-generator
+      version: stable
+  template:
+    metadata:
+      labels:
+        app: ad-generator
+        version: stable
+        track: stable
+    spec:
+      containers:
+      - name: ad-generator-api
+        image: ammanharoon/ad-generator-api:stable
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: MODEL_PATH
+          value: "/app/models/checkpoints/final_model"
+        - name: VERSION
+          value: "stable"
+        - name: DEPLOYMENT_TRACK
+          value: "stable"
+        envFrom:
+        - configMapRef:
+            name: ad-generator-config
+        - secretRef:
+            name: ad-generator-secret
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5

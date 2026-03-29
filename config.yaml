@@ -1,0 +1,52 @@
+project: 
+  name: "ecommerce-ad-generator"
+  version: "0.1.0"
+  environment: "development"
+data:
+  raw_data_path: "data/raw/products.csv"
+  processed_data_path: "data/processed/products_processed.csv"
+  feature_store_path: "data/feature_store"
+  batch_size: 32
+
+model:
+  name: "google/flan-t5-base"
+  max_length: 150
+  min_length: 40
+  temperature: 0.8
+  top_p: 0.92
+  num_beams: 5
+  do_sample: true
+  repetition_penalty: 1.2
+  training:  
+    epochs: 5
+    learning_rate: 3e-5
+    batch_size: 4
+    gradient_accumulation_steps: 4
+    fp16: true
+    
+mlflow:
+  tracking_uri:  "http://localhost:5000"
+  experiment_name: "ad-creative-generation"
+  artifact_location: "./mlruns"
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload:  false
+monitoring:
+  prometheus_port: 9090
+  metrics_path: "/metrics"
+airflow:
+  dags_folder: "./airflow/dags"
+  schedule_interval: "0 2 * * *"
+kubernetes:
+  namespace: "ad-generator"
+  replicas: 2
+  cpu_request: "500m"
+  memory_request: "1Gi"
+  cpu_limit: "2000m"
+  memory_limit:  "4Gi"
+cloud:
+  provider: "aws"
+  region: "us-east-1"
+  storage_bucket: "ad-generator-data"

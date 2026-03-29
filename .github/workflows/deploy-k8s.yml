@@ -1,0 +1,164 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["Build & Push Docker Image"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'minikube'
+        type: choice
+        options:
+          - minikube
+          - cloud
+
+env:
+  IMAGE_NAME: ad-generator-api
+  K8S_NAMESPACE: default
+
+jobs:
+  deploy-minikube-simulation:
+    name: Simulate K8s Deployment
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Validate K8s manifests
+      run: |
+        echo "🔍 Validating Kubernetes manifests..."
+        kubectl apply --dry-run=client -f k8s/configmap.yaml
+        kubectl apply --dry-run=client -f k8s/secret.yaml
+        kubectl apply --dry-run=client -f k8s/deployment.yaml
+        kubectl apply --dry-run=client -f k8s/service.yaml
+        kubectl apply --dry-run=client -f k8s/hpa.yaml
+        echo "✅ All manifests are valid"
+    
+    - name: Generate deployment summary
+      run: |
+        echo "## 🚀 Kubernetes Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Image Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Repository:** \`${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag:** \`latest\` and \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Registry:** Docker Hub" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Deployment Configuration" >> $GITHUB_STEP_SUMMARY
+        echo "- **Namespace:** \`${{ env.K8S_NAMESPACE }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Min Replicas:** 2" >> $GITHUB_STEP_SUMMARY
+        echo "- **Max Replicas:** 10" >> $GITHUB_STEP_SUMMARY
+        echo "- **CPU Target:** 70%" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Resources" >> $GITHUB_STEP_SUMMARY
+        echo "| Resource | Request | Limit |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|---------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Memory | 1Gi | 4Gi |" >> $GITHUB_STEP_SUMMARY
+        echo "| CPU | 500m | 2000m |" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Simulate deployment update
+      run: |
+        echo "📦 Would update deployment image to:"
+        echo "   ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo ""
+        echo "🔄 Deployment command (for actual K8s cluster):"
+        echo "   kubectl set image deployment/ad-generator-deployment \\"
+        echo "     ad-generator-api=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \\"
+        echo "     -n ${{ env.K8S_NAMESPACE }}"
+        echo ""
+        echo "✅ Manifest validation passed"
+        echo "✅ Ready for deployment to actual K8s cluster"
+    
+    - name: Create deployment artifact
+      run: |
+        mkdir -p deployment-artifacts
+        
+        # Create deployment info file
+        cat > deployment-artifacts/deployment-info.yaml << EOF
+        deployment:
+          image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          tag: ${{ github.sha }}
+          namespace: ${{ env.K8S_NAMESPACE }}
+          timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          commit: ${{ github.sha }}
+          branch: ${{ github.ref_name }}
+          triggered_by: ${{ github.actor }}
+        
+        kubectl_commands:
+          - kubectl set image deployment/ad-generator-deployment ad-generator-api=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n ${{ env.K8S_NAMESPACE }}
+          - kubectl rollout status deployment/ad-generator-deployment -n ${{ env.K8S_NAMESPACE }}
+          - kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+        EOF
+        
+        # Copy K8s manifests
+        cp -r k8s/ deployment-artifacts/
+        
+        # Create deployment script
+        cat > deployment-artifacts/deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        echo "🚀 Deploying to Kubernetes..."
+        
+        # Apply manifests
+        kubectl apply -f k8s/
+        
+        # Update image
+        kubectl set image deployment/ad-generator-deployment \
+          ad-generator-api=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          -n ${{ env.K8S_NAMESPACE }}
+        
+        # Wait for rollout
+        kubectl rollout status deployment/ad-generator-deployment -n ${{ env.K8S_NAMESPACE }}
+        
+        # Show status
+        kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+        kubectl get service ad-generator-service -n ${{ env.K8S_NAMESPACE }}
+        
+        echo "✅ Deployment complete!"
+        EOF
+        
+        chmod +x deployment-artifacts/deploy.sh
+    
+    - name: Upload deployment artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: k8s-deployment-${{ github.sha }}
+        path: deployment-artifacts/
+        retention-days: 30
+
+    - name: Deployment instructions
+      run: |
+        echo "📋 To deploy to your K8s cluster:"
+        echo ""
+        echo "1. Download deployment artifacts from GitHub Actions"
+        echo "2. Configure kubectl for your cluster:"
+        echo "   - Minikube: minikube start"
+        echo "   - AWS EKS: aws eks update-kubeconfig --name <cluster>"
+        echo "   - GKE: gcloud container clusters get-credentials <cluster>"
+        echo "   - AKS: az aks get-credentials --resource-group <rg> --name <cluster>"
+        echo ""
+        echo "3. Run deployment script:"
+        echo "   bash deploy.sh"
+        echo ""
+        echo "4. Or manually apply:"
+        echo "   kubectl apply -f k8s/"
+        echo "   kubectl set image deployment/ad-generator-deployment \\"
+        echo "     ad-generator-api=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+    
+    - name: Success notification
+      run: |
+        echo "✅ Kubernetes deployment workflow completed successfully"
+        echo "✅ Manifests validated"
+        echo "✅ Deployment artifacts created"
+        echo "✅ Ready for K8s deployment"

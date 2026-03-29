@@ -1,0 +1,30 @@
+FROM nvidia/cuda:12.1.0-base-ubuntu22.04
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3-pip \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt . 
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY src/ ./src/
+COPY models/ ./models/
+COPY config.yaml .
+COPY setup.py .
+
+RUN pip3 install -e .
+
+ENV PYTHONUNBUFFERED=1
+ENV MODEL_PATH=/app/models/checkpoints/final_model
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

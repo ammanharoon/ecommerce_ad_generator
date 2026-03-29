@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Ad Generator - E-Commerce Marketing Tool</title>
+    <link rel="stylesheet" href="../src/styles/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    <h1>AI Ad Generator</h1>
+                </div>
+                <nav class="nav">
+                    <a href="#generator" class="nav-link">Generator</a>
+                    <a href="#batch" class="nav-link">Batch Mode</a>
+                    <a href="#metrics" class="nav-link">Metrics</a>
+                    <a href="http://localhost:8000/docs" target="_blank" class="nav-link">API Docs</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2 class="hero-title">Generate Compelling Ad Copy in Seconds</h2>
+                <p class="hero-subtitle">Powered by fine-tuned T5 transformer models and production MLOps infrastructure</p>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-value" id="total-ads">0</div>
+                        <div class="stat-label">Ads Generated</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="avg-time">0s</div>
+                        <div class="stat-label">Avg. Generation Time</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="success-rate">100%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- System Status -->
+            <div class="status-card" id="status-card">
+                <div class="status-indicator">
+                    <div class="status-dot" id="status-dot"></div>
+                    <span class="status-text" id="status-text">Checking system status...</span>
+                </div>
+                <div class="status-details" id="status-details"></div>
+            </div>
+
+            <!-- Generator Section -->
+            <section id="generator" class="section">
+                <h2 class="section-title">Single Product Generator</h2>
+                
+                <div class="generator-layout">
+                    <!-- Input Form -->
+                    <div class="input-panel">
+                        <form id="ad-form" class="ad-form">
+                            <div class="form-group">
+                                <label for="product-name">Product Name *</label>
+                                <input 
+                                    type="text" 
+                                    id="product-name" 
+                                    name="product_name"
+                                    placeholder="e.g., Wireless Headphones Pro"
+                                    required
+                                    minlength="3"
+                                    maxlength="100"
+                                >
+                            </div>
+
+                            <div class="form-group">
+                                <label for="category">Category *</label>
+                                <select id="category" name="category" required>
+                                    <option value="">Select a category</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Clothing">Clothing</option>
+                                    <option value="Home & Garden">Home & Garden</option>
+                                    <option value="Sports">Sports</option>
+                                    <option value="Books">Books</option>
+                                    <option value="Toys">Toys</option>
+                                    <option value="Beauty">Beauty</option>
+                                    <option value="Food">Food</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description">Product Description *</label>
+                                <textarea 
+                                    id="description" 
+                                    name="description"
+                                    placeholder="e.g., Premium noise-cancelling wireless headphones with 30-hour battery life and superior sound quality"
+                                    required
+                                    minlength="20"
+                                    maxlength="500"
+                                    rows="4"
+                                ></textarea>
+                                <span class="char-count" id="char-count">0 / 500</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="price">Price (USD) *</label>
+                                <div class="price-input">
+                                    <span class="price-symbol">$</span>
+                                    <input 
+                                        type="number" 
+                                        id="price" 
+                                        name="price"
+                                        placeholder="149.99"
+                                        required
+                                        min="0.01"
+                                        step="0.01"
+                                    >
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" id="generate-btn">
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                </svg>
+                                Generate Ad
+                            </button>
+
+                            <button type="button" class="btn btn-secondary" id="example-btn">
+                                Load Example
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Output Panel -->
+                    <div class="output-panel">
+                        <div class="output-header">
+                            <h3>Generated Ad</h3>
+                            <button class="btn-icon-only" id="copy-btn" title="Copy to clipboard" style="display: none;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div id="output-container" class="output-container">
+                            <div class="output-placeholder">
+                                <svg class="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                                    <polyline points="10 9 9 9 8 9"></polyline>
+                                </svg>
+                                <p>Your generated ad will appear here</p>
+                            </div>
+                        </div>
+
+                        <div id="output-metrics" class="output-metrics" style="display: none;">
+                            <div class="metric">
+                                <span class="metric-label">Generation Time</span>
+                                <span class="metric-value" id="gen-time">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Ad Length</span>
+                                <span class="metric-value" id="ad-length">-</span>
+                            </div>
+                            <div class="metric">
+                                <span class="metric-label">Word Count</span>
+                                <span class="metric-value" id="word-count">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Batch Generator Section -->
+            <section id="batch" class="section">
+                <h2 class="section-title">Batch Generator</h2>
+                <div class="batch-container">
+                    <div class="batch-upload">
+                        <label for="csv-upload" class="upload-label">
+                            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <span>Upload CSV File</span>
+                            <span class="upload-hint">product_name, category, description, price</span>
+                        </label>
+                        <input type="file" id="csv-upload" accept=".csv" style="display: none;">
+                        
+                        <button class="btn btn-secondary" id="download-template">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Template
+                        </button>
+                    </div>
+
+                    <div id="batch-results" class="batch-results" style="display: none;"></div>
+                </div>
+            </section>
+
+            <!-- Real-time Metrics -->
+            <section id="metrics" class="section">
+                <h2 class="section-title">Real-Time Metrics</h2>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <h4>Request Rate</h4>
+                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="metric-card-value" id="request-rate">0 req/s</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <h4>Active Requests</h4>
+                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                        </div>
+                        <div class="metric-card-value" id="active-requests">0</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <h4>Error Rate</h4>
+                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="15" y1="9" x2="9" y2="15"></line>
+                                <line x1="9" y1="9" x2="15" y2="15"></line>
+                            </svg>
+                        </div>
+                        <div class="metric-card-value" id="error-rate">0%</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-card-header">
+                            <h4>System Uptime</h4>
+                            <svg class="metric-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                                <polyline points="17 6 23 6 23 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="metric-card-value" id="uptime">0h</div>
+                    </div>
+                </div>
+
+                <div class="monitoring-links">
+                    <a href="http://localhost:9090" target="_blank" class="monitoring-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v6l4 2"></path>
+                        </svg>
+                        Prometheus
+                    </a>
+                    <a href="http://localhost:3000" target="_blank" class="monitoring-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                        Grafana
+                    </a>
+                    <a href="http://localhost:5000" target="_blank" class="monitoring-link">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        MLflow
+                    </a>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2025 AI Ad Generator. Built with ❤️ using MLOps best practices.</p>
+                <div class="footer-links">
+                    <a href="https://github.com/MLOPS-Fall-2025/e-commerce-ad-creative-generator-ammanharoon" target="_blank">GitHub</a>
+                    <a href="http://localhost:8000/docs" target="_blank">API Docs</a>
+                    <a href="#" id="about-link">About</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Spinner -->
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="../src/services/api.js"></script>
+    <script src="../src/components/app.js"></script>
+</body>
+</html>

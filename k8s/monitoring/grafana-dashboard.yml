@@ -1,0 +1,272 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: default
+data:
+  ad-generator-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "uid": "ad-generator-ml",
+        "title": "Ad Generator ML Metrics",
+        "tags": ["ml", "ad-generator", "monitoring"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 0,
+        "refresh": "10s",
+        "panels": [
+          {
+            "id": 1,
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+            "type": "graph",
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "rate(ad_generator_requests_total[5m])",
+                "legendFormat": "{{endpoint}} - {{status}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "reqps", "label": "Requests/sec"},
+              {"format": "short"}
+            ],
+            "lines": true,
+            "fill": 1,
+            "linewidth": 2,
+            "tooltip": {"shared": true}
+          },
+          {
+            "id": 2,
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "type": "graph",
+            "title": "Generation Latency (95th percentile)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(ad_generator_generation_time_seconds_bucket[5m]))",
+                "legendFormat": "p95 latency",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(ad_generator_generation_time_seconds_bucket[5m]))",
+                "legendFormat": "p50 latency",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              {"format": "s", "label": "Latency"},
+              {"format": "short"}
+            ],
+            "lines": true,
+            "fill": 1,
+            "linewidth": 2
+          },
+          {
+            "id": 3,
+            "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+            "type": "stat",
+            "title": "Total Ads Generated",
+            "targets": [
+              {
+                "expr": "sum(ad_generator_ads_generated_total)",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value",
+              "textMode": "auto"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": 0, "color": "green"},
+                    {"value": 100, "color": "yellow"},
+                    {"value": 1000, "color": "red"}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+            "type": "stat",
+            "title": "Error Rate",
+            "targets": [
+              {
+                "expr": "rate(ad_generator_errors_total[5m])",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "reqps",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": 0, "color": "green"},
+                    {"value": 0.1, "color": "yellow"},
+                    {"value": 1, "color": "red"}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+            "type": "stat",
+            "title": "Active Requests",
+            "targets": [
+              {
+                "expr": "ad_generator_active_requests",
+                "refId": "A"
+              }
+            ],
+            "options": {
+              "graphMode": "area",
+              "colorMode": "value"
+            },
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": 0, "color": "green"},
+                    {"value": 5, "color": "yellow"},
+                    {"value": 10, "color": "red"}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 6,
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+            "type": "graph",
+            "title": "Ads Generated by Category",
+            "targets": [
+              {
+                "expr": "rate(ad_generator_ads_generated_total[5m])",
+                "legendFormat": "{{category}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "reqps", "label": "Ads/sec"},
+              {"format": "short"}
+            ],
+            "lines": true,
+            "fill": 2,
+            "stack": true
+          },
+          {
+            "id": 7,
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+            "type": "graph",
+            "title": "Ad Quality Metrics (Length)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, rate(ad_generator_ad_length_characters_bucket[5m]))",
+                "legendFormat": "Median length",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, rate(ad_generator_ad_length_characters_bucket[5m]))",
+                "legendFormat": "95th percentile",
+                "refId": "B"
+              }
+            ],
+            "yaxes": [
+              {"format": "short", "label": "Characters"},
+              {"format": "short"}
+            ],
+            "lines": true,
+            "fill":  1
+          },
+          {
+            "id": 8,
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+            "type": "graph",
+            "title": "Product Price Distribution",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, rate(ad_generator_product_price_bucket[5m]))",
+                "legendFormat": "Median price - {{category}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "currencyUSD", "label": "Price"},
+              {"format": "short"}
+            ],
+            "lines":  true,
+            "fill": 1
+          },
+          {
+            "id": 9,
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+            "type": "graph",
+            "title": "Service Uptime",
+            "targets": [
+              {
+                "expr": "ad_generator_uptime_seconds",
+                "legendFormat": "Uptime",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "s", "label": "Uptime"},
+              {"format": "short"}
+            ],
+            "lines": true,
+            "fill":  1
+          },
+          {
+            "id": 10,
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
+            "type": "table",
+            "title": "Model Information",
+            "targets": [
+              {
+                "expr": "ad_generator_model_info",
+                "refId": "A",
+                "format": "table",
+                "instant": true
+              }
+            ],
+            "options": {
+              "showHeader": true
+            },
+            "fieldConfig": {
+              "defaults": {
+                "custom": {
+                  "align": "auto",
+                  "displayMode": "auto"
+                }
+              }
+            }
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "timepicker": {
+          "refresh_intervals": ["5s", "10s", "30s", "1m", "5m"]
+        }
+      }
+    }

@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: prometheus-config
+  namespace: default
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    
+    # Alertmanager configuration
+    alerting: 
+      alertmanagers:
+        - static_configs:
+            - targets:  []
+    
+    # Load rules
+    rule_files: 
+      - '/etc/prometheus/alert_rules.yml'
+    
+    # Scrape configurations
+    scrape_configs: 
+      # Prometheus itself
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']
+      
+      # Ad Generator API
+      - job_name: 'ad-generator-api'
+        metrics_path: '/metrics'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: 
+                - default
+        relabel_configs: 
+          # Only scrape pods with specific label
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: ad-generator
+          
+          # Use pod name as instance label
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          
+          # Use pod IP for scraping
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: '${1}:8000'
+  
+  alert_rules.yml: |
+    groups:
+      - name: ad_generator_alerts
+        interval: 30s
+        rules:
+          # High error rate
+          - alert: HighErrorRate
+            expr: rate(ad_generator_errors_total[5m]) > 0.1
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate is {{ $value }} errors/second"
+          
+          # High latency
+          - alert: HighLatency
+            expr: histogram_quantile(0.95, rate(ad_generator_generation_time_seconds_bucket[5m])) > 10
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High generation latency"
+              description: "95th percentile latency is {{ $value }}s"
+          
+          # Service down
+          - alert: ServiceDown
+            expr: up{job="ad-generator-api"} == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Ad Generator service is down"
+              description: "Service has been down for more than 1 minute"
+          
+          # Low throughput
+          - alert: LowThroughput
+            expr:  rate(ad_generator_ads_generated_total[5m]) < 0.01
+            for: 10m
+            labels:
+              severity: info
+            annotations:
+              summary:  "Low ad generation throughput"
+              description: "Only {{ $value }} ads/second being generated"
